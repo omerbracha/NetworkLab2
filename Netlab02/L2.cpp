@@ -44,7 +44,7 @@ void L2::printMsg(char* msg)
 
 int L2::recvFromL2(byte *recvData, size_t recvDataLen)
 {
-	/* ADD YOUR IMPLEMENTATION HERE*/
+		
 	return 42;
 }
 
