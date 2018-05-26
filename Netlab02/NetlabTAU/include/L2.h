@@ -7,6 +7,7 @@
 #include "Types.h"
 #include <pthread.h>
 #include <string>
+using namespace std;
 
 
 class L3;
@@ -82,7 +83,7 @@ public:
 	/*
 	* impelmented print function for better readbilty
 	*/
-	void L2::printMsg(char* msg);
+	void L2::printMsg(string msg);
 
 
 	/**

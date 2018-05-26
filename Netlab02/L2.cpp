@@ -5,6 +5,9 @@
 #include "L2.h"
 #include "NIC.h"
 #include <iostream>
+#include <fstream>
+#include <winsock2.h>
+#include <string>
 using namespace std;
 
 /**
@@ -35,7 +38,7 @@ std::string L2::getLowestInterface(){ return nic->getLowestInterface(); }
 /*
 * a generic print function, imlemented for better readabiltty
 */
-void L2::printMsg(char* msg)
+void L2::printMsg(string msg)
 {
 	pthread_mutex_lock(&NIC::print_mutex);
 	cout << msg << endl;
@@ -50,8 +53,7 @@ int L2::recvFromL2(byte *recvData, size_t recvDataLen)
 
 int L2::sendToL2(byte *sendData, size_t sendDataLen, uint16_t family, string spec_mac, uint16_t spec_type, string dst_addr)
 {
-	/* ADD YOUR IMPLEMENTATION HERE*/
-	return 42;
+	
 }
 
 /**
