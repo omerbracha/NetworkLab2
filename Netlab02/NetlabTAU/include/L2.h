@@ -79,6 +79,12 @@ public:
 	*/
 	int recvFromL2(byte *recvData, size_t recvDataLen);
 
+	/*
+	* impelmented print function for better readbilty
+	*/
+	void L2::printMsg(char* msg);
+
+
 	/**
 	* \brief Setter for the pointer to the NIC to be used by this layer.
 	*

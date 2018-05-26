@@ -4,6 +4,7 @@
 */
 #include "L2.h"
 #include "NIC.h"
+#include <iostream>
 using namespace std;
 
 /**
@@ -30,6 +31,16 @@ NIC* L2::getNIC(){ return nic; }
 * Implemented for you
 */
 std::string L2::getLowestInterface(){ return nic->getLowestInterface(); }
+
+/*
+* a generic print function, imlemented for better readabiltty
+*/
+void L2::printMsg(char* msg)
+{
+	pthread_mutex_lock(&NIC::print_mutex);
+	cout << msg << endl;
+	pthread_mutex_unlock(&NIC::print_mutex);
+}
 
 int L2::recvFromL2(byte *recvData, size_t recvDataLen)
 {
