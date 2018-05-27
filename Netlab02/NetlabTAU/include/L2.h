@@ -66,6 +66,8 @@ public:
 	*/
 	int sendToL2(byte* sendData, size_t sendDataLen, uint16_t family, std::string spec_mac, uint16_t spec_type, std::string dst_addr = "");
 
+	void createHeader(word  macAddr_asInt[6], byte  macAddr_asChar[6], uint64_t &src_MAC_addr, int &data_size, const size_t &sendDataLen, byte * &data_toSend, uint64_t &dest_MAC_addr, short_word &word_type, byte * sendData);
+
 	void parseMACaddrUNSPEC(std::string &spec_mac, word  macAddr_asInt[6], byte  macAddr_asChar[6], uint64_t &dest_MAC_addr);
 
 	void parseMACaddrINET(std::string &dest_MAC_addr_asString, word  macAddr_asInt[6], byte  macAddr_asChar[6], uint64_t &dest_MAC_addr);

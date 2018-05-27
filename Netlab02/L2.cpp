@@ -54,16 +54,16 @@ int L2::recvFromL2(byte *recvData, size_t recvDataLen)
 
 int L2::sendToL2(byte *sendData, size_t sendDataLen, uint16_t family, string spec_mac, uint16_t spec_type, string dst_addr)
 {
-	uint64_t dest_MAC_addr;
-	word macAddr_asInt[6];
 	short_word word_type;
+	word macAddr_asInt[6];
 	byte macAddr_asChar[6];
-	string print_msg;
+	uint64_t dest_MAC_addr;
 	char ip_string[32] = { 0 };
-	std::string dest_MAC_addr_asString;
+	string dest_MAC_addr_asString;
+	string print_msg;
 	uint64_t src_MAC_addr;
-	byte* data_toSend;
 	int data_size;
+	byte* data_toSend;
 	int res;
 
 	if (family == AF_UNSPEC) {
