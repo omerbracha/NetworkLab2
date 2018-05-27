@@ -66,7 +66,14 @@ int L2::sendToL2(byte *sendData, size_t sendDataLen, uint16_t family, string spe
 	int data_size;
 	int res;
 
-	if (family == AF_INET) {
+	if (family == AF_UNSPEC) {
+		word_type = htons(spec_type);
+
+		// MAC address parsing
+		parseMACaddrUNSPEC(spec_mac, macAddr_asInt, macAddr_asChar, dest_MAC_addr);
+	}
+
+	else { // if (family == AF_INET)
 		word_type = htons(0x0800);
 
 		// Extract the IP address from the packet header
@@ -91,13 +98,6 @@ int L2::sendToL2(byte *sendData, size_t sendDataLen, uint16_t family, string spe
 
 		// MAC address parsing
 		parseMACaddrINET(dest_MAC_addr_asString, macAddr_asInt, macAddr_asChar, dest_MAC_addr);
-	}
-
-	else { // if (family == AF_UNSPEC)
-		word_type = htons(spec_type);
-
-		// MAC address parsing
-		parseMACaddrUNSPEC(spec_mac, macAddr_asInt, macAddr_asChar, dest_MAC_addr);
 	}
 
 	// Create Ethernet header
