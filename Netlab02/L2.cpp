@@ -85,7 +85,7 @@ int L2::sendToL2(byte *sendData, size_t sendDataLen, uint16_t family, string spe
 		// Extract MAC address of the destination
 		dest_MAC_addr_asString = nic->getARP()->arpresolve(dst_addr, sendData, sendDataLen);
 
-		//throw packet if there is no MAC address
+		// Throw packet if there is no MAC address
 		if (dest_MAC_addr_asString.compare("") == 0)
 		{
 			if (debug) 
