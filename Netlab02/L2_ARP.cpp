@@ -364,7 +364,7 @@ int L2_ARP::in_arpinput(byte *recvData, size_t recvDataLen)
 	// Read parameters
 	readParams(hardware, recvData, protocol, h_len, p_len, op);
 
-	//ip and mac convertion to string
+	// Convert address to strings
 	convertAddr2String(buff, recvData, ip_src_addr, ip_dest_addr, mac_src_addr, mac_dest_addr);
 
 
@@ -385,7 +385,6 @@ int L2_ARP::in_arpinput(byte *recvData, size_t recvDataLen)
 		printMsg(print_msg);
 		return res;
 	}
-
 	if (op == 1)
 	{
 		return firstOpFunc(ip_dest_addr, ip_src_addr, mac_src_addr, print_msg);
@@ -422,17 +421,21 @@ void L2_ARP::convertMacAddr(std::string &hw_tgt, word  macAddr_asInt[6], byte  m
 
 void L2_ARP::buildReply(byte * &pack_reply, const uint64_t &mac_src_addr, std::string &itaddr, const uint64_t &mac_dest_addr, std::string &isaddr)
 {
-	pack_reply = new byte[46]; //ARP data size = 46
+	/* Build reply with the following attributes:
+		data size = 46, ar_hrd, Ethertype_IP, hardware length = 6, protocol length = 4, ar_op, 
+		source MAC address, source IP address, destination MAC address, destination IP address
+		*/
+	pack_reply = new byte[46]; 
 	memset(pack_reply, 0, 46);
-	*((short_word*)(pack_reply)) = htons(1); //Hardware type = ar_hrd
-	*((short_word*)(pack_reply + 2)) = htons(0x0800); //Protocol type = Ethertype_IP
-	*((byte*)(pack_reply + 4)) = 6; //Hardware length = 6
-	*((byte*)(pack_reply + 5)) = 4;  //Protocol length = 4
-	*((short_word*)(pack_reply + 6)) = htons(2); //ar_op
-	*((uint64_t*)(pack_reply + 8)) = mac_src_addr; //Source MAC address
-	*((word*)(pack_reply + 14)) = inet_addr(itaddr.c_str()); //Source IP address
-	*((uint64_t*)(pack_reply + 18)) = mac_dest_addr; //Destination MAC address
-	*((word*)(pack_reply + 24)) = inet_addr(isaddr.c_str()); //Destination IP address
+	*((short_word*)(pack_reply)) = htons(1);
+	*((short_word*)(pack_reply + 2)) = htons(0x0800); 
+	*((byte*)(pack_reply + 4)) = 6; 
+	*((byte*)(pack_reply + 5)) = 4; 
+	*((short_word*)(pack_reply + 6)) = htons(2);
+	*((uint64_t*)(pack_reply + 8)) = mac_src_addr; 
+	*((word*)(pack_reply + 14)) = inet_addr(itaddr.c_str());
+	*((uint64_t*)(pack_reply + 18)) = mac_dest_addr;
+	*((word*)(pack_reply + 24)) = inet_addr(isaddr.c_str());
 }
 
 void* L2_ARP::SendArpReply(string itaddr, string isaddr, string hw_tgt, string hw_snd)
