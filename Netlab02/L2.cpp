@@ -58,16 +58,6 @@ void L2::printMsg(string msg)
 * function to turn int to hex. referance to: https://stackoverflow.com/questions/5100718/integer-to-hex-string-in-c
 */
 
-template< typename T >
-std::string int_to_hex(T i)
-{
-	std::stringstream stream;
-	stream << "0x"
-		<< std::setfill('0') << std::setw(sizeof(T) * 2)
-		<< std::hex << i;
-	return stream.str();
-}
-
 int L2::recvFromL2(byte *recvData, size_t recvDataLen)
 {
 	string sourceMac = "";		// source mac address
@@ -82,23 +72,23 @@ int L2::recvFromL2(byte *recvData, size_t recvDataLen)
 
 	//start handeling header: 
 	if (debug) {
-		printMsg("recived Msg from L2:");	
+		printMsg("recived Msg from L2:");
 	}
 
 	// get source mac adress:
 	for (size_t i = 0; i < 6; i++)
 	{
-		sourceMac = sourceMac + std::to_string( recvData[i] ) + ":" ;
+		sourceMac = sourceMac + std::to_string(recvData[i]) + ":";
 	}
-	sourceMac.erase(-1,1); // trim end
-	
+	sourceMac.erase(-1, 1); // trim end
+
 	// get dest mac adress:
 	for (size_t i = 6; i < 12; i++)
 	{
-		destMac = destMac + std::to_string( recvData[i] ) + ":";
+		destMac = destMac + std::to_string(recvData[i]) + ":";
 	}
-	destMac.erase(-1,1); // trim end 
-	
+	destMac.erase(-1, 1); // trim end 
+
 	if (debug) {
 		printMsg("source MAC address is: " + sourceMac);
 		printMsg("dest MAC address is: " + destMac);
@@ -106,13 +96,13 @@ int L2::recvFromL2(byte *recvData, size_t recvDataLen)
 
 	// get user mac ()
 	userMac = nic->myMACAddr;
-	
+
 	if (debug) {
 		printMsg("user MAC address is: " + userMac);
 	}
-	
+
 	printMsg("debug - bolet to compere first numbers, see the HEX vs DEC");
-	
+
 	// check if it's not to the user
 	if (userMac.compare(destMac) != 0){
 		if (debug){
@@ -131,11 +121,11 @@ int L2::recvFromL2(byte *recvData, size_t recvDataLen)
 
 	// get msg type
 	type = type + recvData[12]; // upper
-	type = type << 8; 
+	type = type << 8;
 	type = type + recvData[13]; // lower
-	
+
 	if (debug){
-		printMsg("type is: " + int_to_hex(type));
+		printMsg("type is: " + printf("%x",type));
 	}
 
 	// extract data from msg
@@ -158,13 +148,14 @@ int L2::recvFromL2(byte *recvData, size_t recvDataLen)
 
 	// clear
 	delete[] data;
+
 	// 0 in success.
 	return chk;
 }
 
 int L2::sendToL2(byte *sendData, size_t sendDataLen, uint16_t family, string spec_mac, uint16_t spec_type, string dst_addr)
 {
-	
+	return 42;
 }
 
 /**

@@ -27,7 +27,7 @@ public:
 	*
 	* \param debug \a (bool)
 	* \parblock
-	* Decide the mode of the interface, when true the interface will print messages for debuf purposes. 
+	* Decide the mode of the interface, when true the interface will print messages for debuf purposes.
 	* Default value is false.
 	* \endparblock
 	*/
@@ -58,8 +58,8 @@ public:
 	* \param spec_mac \a (string)
 	* \parblock
 	* Some protocols, such as ARP, need to specify the Ethernet destination and type explicitly.
-	* This case is indicated by the family type of the data. Ergo, it isn't necessary to call 
-	* arpresolve (as for AF_INET) because the Ethernet destination address has been provided 
+	* This case is indicated by the family type of the data. Ergo, it isn't necessary to call
+	* arpresolve (as for AF_INET) because the Ethernet destination address has been provided
 	* explicitly by the caller.
 	* \endparblock
 	* \param spec_type \a (uint16_t) explict type specification (along the explict MAC specification).
@@ -72,7 +72,7 @@ public:
 	* \brief L2 input routine.
 	*
 	* This method was called by the leread (member function of the NIC class).
-	* It unwraps the Ethernet header of the received data, drops invalid packets, 
+	* It unwraps the Ethernet header of the received data, drops invalid packets,
 	* passes the unwraped data to the correct upper interface (i.e ARP and IP in
 	* our case) and possibly prints relevant information.
 	*
