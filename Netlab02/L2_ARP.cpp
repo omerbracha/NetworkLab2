@@ -245,25 +245,36 @@ string L2_ARP::arpresolve(string ip_addr, byte *sendData, size_t sendDataLen)
 }
 
 
+void lookForCell(std::string &ip_addr, cell_C * &cell)
+{
+	for (vector<cell_C*>::iterator cache_iter = cache.begin(); cache_iter != cache.end(); ++cache_iter) {
+		if ((*cache_iter)->ip_addr.compare(ip_addr) == 0)
+		{
+			cell = *cache_iter;
+			break;
+		}
+	}
+}
+
 void* L2_ARP::arplookup(string ip_addr, bool create)
 {
 	cell_C* cell = NULL;
-	if (!create) { //look up in the table
-		for (vector<cell_C*>::iterator it = cache.begin(); it != cache.end(); ++it) {
-			if ((*it)->ip_addr.compare(ip_addr) == 0) { cell = *it; break; }
-		}
-	}
-
-	else {//create new cell
+	if (create) // create new cell
+	{ 
 		cell = new cell_C(ip_addr, "", false);
+	} 
+	else  // look for cell
+	{
+		lookForCell(ip_addr, cell);
 	}
-
 	return cell;
 }
 
 int L2_ARP::in_arpinput(byte *recvData, size_t recvDataLen)
 {
-	PRINT_LOCK; cout << "ARP packet received!\n"; PRINT_UNLOCK;
+	string print_msg = "ARP packet received!\n"; // TODO - CHECK IF NEEDED
+	printMsg(print_msg); // TODO - CHECK IF NEEDED
+
 	//check vaildity
 	if (recvDataLen != 46) { PRINT_LOCK; cout << "Wrong size for ARP packet. packet dropped.!\n"; PRINT_UNLOCK; return 0; }
 
