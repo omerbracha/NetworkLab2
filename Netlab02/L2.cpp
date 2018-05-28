@@ -77,18 +77,19 @@ int L2::recvFromL2(byte *recvData, size_t recvDataLen)
 	}
 
 	// get source mac adress:
-	for (size_t i = 0; i < 6; i++)
+	for (size_t i = 6; i < 12; i++)
 	{
 		sourceMac = sourceMac + std::to_string(recvData[i]) + ":";
 	}
-	sourceMac.erase(-1, 1); // trim end
+
+	sourceMac.erase(sourceMac.length() - 1, 1); // trim end
 
 	// get dest mac adress:
-	for (size_t i = 6; i < 12; i++)
+	for (size_t i = 0; i < 6; i++)
 	{
 		destMac = destMac + std::to_string(recvData[i]) + ":";
 	}
-	destMac.erase(-1, 1); // trim end 
+	destMac.erase(destMac.length() - 1, 1); // trim end
 
 	if (debug) {
 		printMsg("source MAC address is: " + sourceMac);
@@ -97,12 +98,9 @@ int L2::recvFromL2(byte *recvData, size_t recvDataLen)
 
 	// get user mac ()
 	userMac = nic->myMACAddr;
-
 	if (debug) {
 		printMsg("user MAC address is: " + userMac);
 	}
-
-	printMsg("debug - bolet to compere first numbers, see the HEX vs DEC");
 
 	// check if it's not to the user
 	if (userMac.compare(destMac) != 0){
@@ -126,7 +124,7 @@ int L2::recvFromL2(byte *recvData, size_t recvDataLen)
 	type = type + recvData[13]; // lower
 
 	if (debug){
-		printMsg("type is: " + printf("%x",type));
+		printMsg("type is: " + printf("%x", type));
 	}
 
 	// extract data from msg
@@ -190,8 +188,8 @@ int L2::sendToL2(byte *sendData, size_t sendDataLen, uint16_t family, string spe
 		// Throw packet if there is no MAC address
 		if (dest_MAC_addr_asString.compare("") == 0)
 		{
-			if (debug) 
-			{ 
+			if (debug)
+			{
 				print_msg = "Throwing packet - IP address not recognized: " + dst_addr + "\n";
 				printMsg(print_msg);
 			}
@@ -266,12 +264,12 @@ void L2::getIP(std::string &dst_addr, char  ip_string[32], byte * sendData)
 }
 
 void L2::getGatewayIP(std::string &dst_addr)
-{	
+{
 	unsigned long and_check_1;
 	unsigned long and_check_2;
 	and_check_1 = (inet_addr(nic->myIP.c_str()) & inet_addr(nic->myNetmask.c_str()));
 	and_check_2 = ((inet_addr(dst_addr.c_str()) & inet_addr(nic->myNetmask.c_str())));
-	if ( (dst_addr.compare("127.0.0.1") != 0) && (and_check_1 != and_check_2) )
+	if ((dst_addr.compare("127.0.0.1") != 0) && (and_check_1 != and_check_2))
 		dst_addr = nic->myDefaultGateway;
 }
 

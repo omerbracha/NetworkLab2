@@ -41,8 +41,9 @@ int main()
 	* 74.125.21.105 or 10.0.0.1
 	* Make sure both option work as you need to support them both.
 	*/
-	string dstIP = "AdS.aN.iP.HeRe";
-
+	
+	//string dstIP = "AdS.aN.iP.HeRe";
+	string dstIP = "8.8.8.8";
 
 	/* L4 tries to resolves destination IP address, if it can't it passes NULL string to L3.*/
 	Transport->sendToL4((byte *)test, testLen, dstIP, "");
