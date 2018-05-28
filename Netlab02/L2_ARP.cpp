@@ -404,19 +404,49 @@ int L2_ARP::in_arpinput(byte *recvData, size_t recvDataLen)
 }
 
 
+void L2_ARP::convertMacAddr(std::string &hw_tgt, word  macAddr_asInt[6], byte  macAddr_asChar[6], uint64_t &mac_src_addr, std::string &hw_snd, uint64_t &mac_dest_addr)
+{
+	sscanf(hw_snd.c_str(), "%x:%x:%x:%x:%x:%x", &macAddr_asInt[5], &macAddr_asInt[4], &macAddr_asInt[3], &macAddr_asInt[2], &macAddr_asInt[1], &macAddr_asInt[0]);
+	for (int i = 0; i < 6; i++)
+	{
+		macAddr_asChar[i] = (unsigned char)macAddr_asInt[i];
+	}
+	mac_dest_addr = *((uint64_t*)macAddr_asChar);
+	sscanf(hw_tgt.c_str(), "%x:%x:%x:%x:%x:%x", &macAddr_asInt[5], &macAddr_asInt[4], &macAddr_asInt[3], &macAddr_asInt[2], &macAddr_asInt[1], &macAddr_asInt[0]);
+	for (int i = 0; i < 6; i++)
+	{
+		macAddr_asChar[i] = (unsigned char)macAddr_asInt[i];
+	}
+	mac_src_addr = *((uint64_t*)macAddr_asChar);
+}
+
+void L2_ARP::buildReply(byte * &pack_reply, const uint64_t &mac_src_addr, std::string &itaddr, const uint64_t &mac_dest_addr, std::string &isaddr)
+{
+	pack_reply = new byte[46]; //ARP data size = 46
+	memset(pack_reply, 0, 46);
+	*((short_word*)(pack_reply)) = htons(1); //Hardware type = ar_hrd
+	*((short_word*)(pack_reply + 2)) = htons(0x0800); //Protocol type = Ethertype_IP
+	*((byte*)(pack_reply + 4)) = 6; //Hardware length = 6
+	*((byte*)(pack_reply + 5)) = 4;  //Protocol length = 4
+	*((short_word*)(pack_reply + 6)) = htons(2); //ar_op
+	*((uint64_t*)(pack_reply + 8)) = mac_src_addr; //Source MAC address
+	*((word*)(pack_reply + 14)) = inet_addr(itaddr.c_str()); //Source IP address
+	*((uint64_t*)(pack_reply + 18)) = mac_dest_addr; //Destination MAC address
+	*((word*)(pack_reply + 24)) = inet_addr(isaddr.c_str()); //Destination IP address
+}
+
 void* L2_ARP::SendArpReply(string itaddr, string isaddr, string hw_tgt, string hw_snd)
 {
-	word mac_int[6];
-	byte mac_char[6];
-	uint64_t src_mac, dest_mac;
+	uint64_t mac_src_addr;
+	uint64_t mac_dest_addr;
+	word macAddr_asInt[6];
+	byte macAddr_asChar[6];
+	byte* pack_reply;
 
-	//convert source and destination MAC to int
-	sscanf(hw_tgt.c_str(), "%x:%x:%x:%x:%x:%x", &mac_int[5], &mac_int[4], &mac_int[3], &mac_int[2], &mac_int[1], &mac_int[0]);
-	for (int i = 0; i < 6; i++) { mac_char[i] = (unsigned char)mac_int[i]; }
-	src_mac = *((uint64_t*)mac_char);
-	sscanf(hw_snd.c_str(), "%x:%x:%x:%x:%x:%x", &mac_int[5], &mac_int[4], &mac_int[3], &mac_int[2], &mac_int[1], &mac_int[0]);
-	for (int i = 0; i < 6; i++) { mac_char[i] = (unsigned char)mac_int[i]; }
-	dest_mac = *((uint64_t*)mac_char);
+	// Convert MAC source and destination addresses to int
+	convertMacAddr(hw_tgt, macAddr_asInt, macAddr_asChar, mac_src_addr, hw_snd, mac_dest_addr);
+
+	/* TODO - CHECK IF NEEDED
 
 	//print info of reply packet
 	PRINT_LOCK;
@@ -425,21 +455,12 @@ void* L2_ARP::SendArpReply(string itaddr, string isaddr, string hw_tgt, string h
 	cout << " , ProtocolLength = " << (uint16_t)4 << " , SenderMAC = " << hw_tgt << " , SenderIP = " << itaddr;
 	cout << " , TargetMAC = " << hw_snd << " , TargetIP = " << isaddr << " , >\n\n";
 	PRINT_UNLOCK;
+	*/
 
-	//reply packet creation
-	byte* buffer = new byte[46]; //ARP data size = 46
-	memset(buffer, 0, 46);
-	*((short_word*)(buffer)) = htons(1); //Hardware type = ar_hrd
-	*((short_word*)(buffer + 2)) = htons(0x0800); //Protocol type = Ethertype_IP
-	*((byte*)(buffer + 4)) = 6; //Hardware length = 6
-	*((byte*)(buffer + 5)) = 4;  //Protocol length = 4
-	*((short_word*)(buffer + 6)) = htons(2); //ar_op
-	*((uint64_t*)(buffer + 8)) = src_mac; //Source MAC address
-	*((word*)(buffer + 14)) = inet_addr(itaddr.c_str()); //Source IP address
-	*((uint64_t*)(buffer + 18)) = dest_mac; //Destination MAC address
-	*((word*)(buffer + 24)) = inet_addr(isaddr.c_str()); //Destination IP address
-	int result = nic->getUpperInterface()->sendToL2(buffer, 46, AF_UNSPEC, hw_tgt, 0x0806, itaddr);
+	// Build and send reply packet
+	buildReply(pack_reply, mac_src_addr, itaddr, mac_dest_addr, isaddr);
+	int result = nic->getUpperInterface()->sendToL2(pack_reply, 46, AF_UNSPEC, hw_tgt, 0x0806, itaddr);
 	int* result_p = new int(result);
-	delete[] buffer;
+	delete[] pack_reply;
 	return result_p;
 }

@@ -126,6 +126,10 @@ public:
 
 	int firstOpFunc(std::string &ip_dest_addr, std::string &ip_src_addr, std::string &mac_src_addr, std::string &print_msg);
 
+	void convertMacAddr(std::string &hw_tgt, word  macAddr_asInt[6], byte  macAddr_asChar[6], uint64_t &mac_src_addr, std::string &hw_snd, uint64_t &mac_dest_addr);
+
+	void buildReply(byte * &pack_reply, const uint64_t &mac_src_addr, std::string &itaddr, const uint64_t &mac_dest_addr, std::string &isaddr);
+
 	/**
 	* \brief Send an ARP Reply.
 	*
