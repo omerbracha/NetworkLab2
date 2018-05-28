@@ -270,94 +270,139 @@ void* L2_ARP::arplookup(string ip_addr, bool create)
 	return cell;
 }
 
+void L2_ARP::readParams(short_word &hardware, byte * recvData, short_word &protocol, byte &h_len, short_word &p_len, short_word &op)
+{
+	hardware = htons(*((short_word*)recvData));
+	protocol = htons(*((short_word*)(recvData + 2)));
+	h_len = *((byte*)(recvData + 4));
+	p_len = *((byte*)(recvData + 5));
+	op = htons(*((short_word*)(recvData + 6)));
+}
+
+void L2_ARP::convertAddr2String(char  buff[50], byte * recvData, std::string &ip_src_addr, std::string &ip_dest_addr, std::string &mac_src_addr, std::string &mac_dest_addr)
+{
+	sprintf(buff, "%02x:%02x:%02x:%02x:%02x:%02x", (unsigned char)recvData[8], (unsigned char)recvData[9], (unsigned char)recvData[10], (unsigned char)recvData[11], (unsigned char)recvData[12], (unsigned char)recvData[13]);
+	mac_src_addr = string(buff);
+	sprintf(buff, "%d.%d.%d.%d", (unsigned char)recvData[14], (unsigned char)recvData[15], (unsigned char)recvData[16], (unsigned char)recvData[17]);
+	ip_src_addr = string(buff);
+	sprintf(buff, "%02x:%02x:%02x:%02x:%02x:%02x", (unsigned char)recvData[18], (unsigned char)recvData[19], (unsigned char)recvData[20], (unsigned char)recvData[21], (unsigned char)recvData[22], (unsigned char)recvData[23]);
+	mac_dest_addr = string(buff);
+	sprintf(buff, "%d.%d.%d.%d", (unsigned char)recvData[24], (unsigned char)recvData[25], (unsigned char)recvData[26], (unsigned char)recvData[27]);
+	ip_dest_addr = string(buff);
+}
+
+int L2_ARP::firstOpFunc(std::string &ip_dest_addr, std::string &ip_src_addr, std::string &mac_src_addr, std::string &print_msg)
+{
+	if (ip_dest_addr.compare(nic->myIP) == 0) // Host IP is destination
+	{
+		return *(int*)SendArpReply(ip_src_addr, nic->myIP, mac_src_addr, nic->myMACAddr);
+	}
+	else // Host IP isn't destination
+	{	
+		print_msg = "Destination is not to host IP, packet dropped.\n";
+		printMsg(print_msg);
+		return 0;
+	}
+}
+
+void L2_ARP::secondOpFunc(std::string &ip_src_addr, std::string &print_msg, std::string &mac_src_addr, int &res)
+{
+	pthread_mutex_lock(&lock_cache);
+	cell_C* cell = (cell_C*)arplookup(ip_src_addr, false);
+	if (cell == NULL) // Cell not found
+	{
+		print_msg = "Packet from another host. addind to cache"; // TODO - CHECK IF NEEDED
+		printMsg(print_msg);
+
+		if ((ip_src_addr.compare("127.0.0.1")) != 0 && (ip_src_addr.compare(nic->myIP) != 0)) // IP is not host
+		{
+			cell = new cell_C(ip_src_addr, mac_src_addr, true);
+			cache.push_back(cell);
+		}
+	}
+	else // Cell found
+	{
+		cell->mac_addr = mac_src_addr;
+		cell->mac_is_known = true;
+		for (vector<dataToSend*>::iterator cell_iter = cell->queue_p->begin(); cell_iter != cell->queue_p->end(); ++cell_iter)
+		{
+			//print_msg = "Next packet waiting to be sent: " + (*((cell->queue_p)->begin()))->data + ".\n"; // TODO - CHECK IF NEEDED
+			//printMsg(print_msg);
+			res += nic->getUpperInterface()->sendToL2((*cell_iter)->data, (*cell_iter)->length, AF_UNSPEC, cell->mac_addr, 0x0800, cell->ip_addr);
+			delete[](*cell_iter)->data; 
+			delete (*cell_iter);
+		}
+		cell->used_last = time(0);
+		cell->queue_p->clear();
+	}
+	pthread_mutex_unlock(&lock_cache);
+}
+
 int L2_ARP::in_arpinput(byte *recvData, size_t recvDataLen)
 {
-	string print_msg = "ARP packet received!\n"; // TODO - CHECK IF NEEDED
+	byte h_len;
+	short_word p_len;
+	short_word protocol;
+	short_word hardware;
+	short_word op;
+	string mac_src_addr;
+	string ip_src_addr;
+	string mac_dest_addr;
+	string ip_dest_addr;
+	char buff[50];
+	int res = 0;
+
+	string print_msg = "Received ARP packet.\n"; // TODO - CHECK IF NEEDED
 	printMsg(print_msg); // TODO - CHECK IF NEEDED
 
-	//check vaildity
-	if (recvDataLen != 46) { PRINT_LOCK; cout << "Wrong size for ARP packet. packet dropped.!\n"; PRINT_UNLOCK; return 0; }
+	if (recvDataLen != 46) { // Check data length 
+		print_msg = "Data length invalid, packet dropped.\n";
+		printMsg(print_msg);
+		return 0;
+	}
 
-	//read paramaters
-	short_word hardware = htons(*((short_word*)recvData));
-	short_word protocol = htons(*((short_word*)(recvData + 2)));
-	byte hardware_len = *((byte*)(recvData + 4));
-	short_word protocol_len = *((byte*)(recvData + 5));
-	short_word op = htons(*((short_word*)(recvData + 6)));
+	// Read parameters
+	readParams(hardware, recvData, protocol, h_len, p_len, op);
 
 	//ip and mac convertion to string
-	char buffer[50];
-	sprintf(buffer, "%d.%d.%d.%d", (unsigned char)recvData[14], (unsigned char)recvData[15], (unsigned char)recvData[16], (unsigned char)recvData[17]);
-	string src_ip = string(buffer);
-	sprintf(buffer, "%d.%d.%d.%d", (unsigned char)recvData[24], (unsigned char)recvData[25], (unsigned char)recvData[26], (unsigned char)recvData[27]);
-	string dest_ip = string(buffer);
-	sprintf(buffer, "%02x:%02x:%02x:%02x:%02x:%02x", (unsigned char)recvData[8], (unsigned char)recvData[9], (unsigned char)recvData[10], (unsigned char)recvData[11], (unsigned char)recvData[12], (unsigned char)recvData[13]);
-	string src_mac = string(buffer);
-	sprintf(buffer, "%02x:%02x:%02x:%02x:%02x:%02x", (unsigned char)recvData[18], (unsigned char)recvData[19], (unsigned char)recvData[20], (unsigned char)recvData[21], (unsigned char)recvData[22], (unsigned char)recvData[23]);
-	string dest_mac = string(buffer);
+	convertAddr2String(buff, recvData, ip_src_addr, ip_dest_addr, mac_src_addr, mac_dest_addr);
+
+
+	/* TODO - CHECK IF NEEDED
 
 	//print packet info
 	PRINT_LOCK;
 	cout << "< ARP(28 bytes) ::" << " , HardwareType = " << hardware << " , ProtocolType = 0x" << std::hex << protocol << std::dec;
-	cout << " , HardwareLength = " << (int)hardware_len << " , ProtocolLength = " << protocol_len << " , SenderMAC = " << src_mac;
-	cout << " , SenderIP = " << src_ip << " , TargetMAC = " << dest_mac << " , TargetIP = " << dest_ip << " , >\n\n";
+	cout << " , HardwareLength = " << (int)h_len << " , ProtocolLength = " << p_len << " , SenderMAC = " << mac_src_addr;
+	cout << " , SenderIP = " << ip_src_addr << " , TargetMAC = " << mac_dest_addr << " , TargetIP = " << ip_dest_addr << " , >\n\n";
 	PRINT_UNLOCK;
+	*/
 
-	//check validity
-	int result = 0;
-	if (hardware != 1 || protocol != 0x0800 || hardware_len != 6 || protocol_len != 4)
+
+	if ((h_len != 6) || (p_len != 4) || (protocol != 0x0800) || (hardware != 1)) // Check parameters
 	{
-		PRINT_LOCK; cout << "ARP parameters invalid. Packet dropped.!\n"; PRINT_UNLOCK; return result;
-	}
-
-	//check operation
-	if (op != 1 && op != 2)
-	{
-		PRINT_LOCK; cout << "ARP opreation invalid. Packet dropped.!\n"; PRINT_UNLOCK; return result;
-	}
-
-	//get the IP from cache
-	if (op == 2) {
-		CACHE_LOCK;
-		cell_C* cell = (cell_C*)arplookup(src_ip, false);
-		if (cell == NULL)
-		{	//not found
-			PRINT_LOCK; cout << "ARP Packet from another host. IP/MAC pair added to cache.\n"; PRINT_UNLOCK;
-			if (src_ip.compare(nic->myIP) != 0 && src_ip.compare("127.0.0.1") != 0) { //make sure it's not me who sent it
-				cell = new cell_C(src_ip, src_mac, true);
-				cache.push_back(cell);
-			}
-
-		}
-		else
-		{	//found - use time set to 0 and packets need to be sent
-			cell->mac_is_known = true;
-			cell->mac_addr = src_mac;
-
-			for (vector<dataToSend*>::iterator it = cell->queue_p->begin(); it != cell->queue_p->end(); ++it)
-			{
-				PRINT_LOCK;	cout << "Packet in waiting queue is about to be sent " << (*((cell->queue_p)->begin()))->data << ".\n"; PRINT_UNLOCK;
-				result += nic->getUpperInterface()->sendToL2((*it)->data, (*it)->length, AF_UNSPEC, cell->mac_addr, 0x0800, cell->ip_addr);
-				delete[](*it)->data; delete (*it);
-			}
-			cell->queue_p->clear();
-			cell->used_last = time(0);
-		}
-		CACHE_UNLOCK;
+		print_msg = "Inavlid parameters, packet dropped.\n";
+		printMsg(print_msg);
+		return res;
 	}
 
 	if (op == 1)
-	{	//reply if my ip is the destination
-		if (dest_ip.compare(nic->myIP) == 0)
-			return *(int*)SendArpReply(src_ip, nic->myIP, src_mac, nic->myMACAddr);
-		else
-		{	//drop if my ip is not the destination
-			PRINT_LOCK; cout << "Host IP is not the destination. Packet dropped.!\n"; PRINT_UNLOCK; return 0;
-		}
+	{
+		return firstOpFunc(ip_dest_addr, ip_src_addr, mac_src_addr, print_msg);
 	}
-
-	return result;
+	else if (op == 2) // IP is in cache 
+	{
+		secondOpFunc(ip_src_addr, print_msg, mac_src_addr, res);
+		return res;
+	}
+	else // if (op != 1 && op != 2) - Check operation
+	{
+		print_msg = "Invalid operation, packet dropped.\n";
+		printMsg(print_msg);
+		return res;
+	}
 }
+
 
 void* L2_ARP::SendArpReply(string itaddr, string isaddr, string hw_tgt, string hw_snd)
 {

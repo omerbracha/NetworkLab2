@@ -98,6 +98,12 @@ public:
 	*/
 	void* arplookup(std::string ip_addr, bool create);
 
+	void readParams(short_word &hardware, byte * recvData, short_word &protocol, byte &h_len, short_word &p_len, short_word &op);
+
+	void convertAddr2String(char  buff[50], byte * recvData, std::string &ip_src_addr, std::string &ip_dest_addr, std::string &mac_src_addr, std::string &mac_dest_addr);
+
+	void secondOpFunc(std::string &ip_src_addr, std::string &print_msg, std::string &mac_src_addr, int &res);
+
 	/**
 	* \brief ARP for Internet protocols on 10 Mb/s Ethernet.
 	*
@@ -117,6 +123,8 @@ public:
 	* \retval int the number of bytes that were received.
 	*/
 	int in_arpinput(byte *recvData, size_t recvDataLen);
+
+	int firstOpFunc(std::string &ip_dest_addr, std::string &ip_src_addr, std::string &mac_src_addr, std::string &print_msg);
 
 	/**
 	* \brief Send an ARP Reply.
