@@ -9,6 +9,9 @@
 #include <fstream>
 #include <winsock2.h>
 #include <string>
+#include "L3.h"
+#include "L2_ARP.h"
+
 using namespace std;
 
 #define E_H_S 14 // ethernet header size
@@ -142,7 +145,7 @@ int L2::recvFromL2(byte *recvData, size_t recvDataLen)
 
 	// send to correct part
 	if (type == ARP){
-		chk = nic->getARP()->inarpinput(data, newSize);
+		chk = nic->getARP()->in_arpinput(data, newSize);
 	}
 	else if (type == IP){
 		chk = upperInterface->recvFromL3(data, newSize);
