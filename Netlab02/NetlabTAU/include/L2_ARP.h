@@ -62,6 +62,8 @@ public:
 	*/
 	int arprequest(std::string ip_addr);
 
+	void buildReq(byte *& req, const uint64_t & src_MAC_addr, std::string & ip_addr);
+
 	/**
 	* \brief Resolve an IP address into an Ethernet address.
 	*

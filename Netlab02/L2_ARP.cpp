@@ -185,62 +185,63 @@ int L2_ARP::arprequest(string ip_addr)
 
 void L2_ARP::buildReq(byte * &req, const uint64_t &src_MAC_addr, std::string &ip_addr)
 {
-	req = new byte[46]; //ARP data size = 46
+	/* Build request with the following atttributes:
+		data size = 46, ar_hrd, Ethertype_IP, hardware length = 6, protocol length = 4, ar_op, source MAC address, source IP address, destination IP address
+		*/
+
+	req = new byte[46];
 	memset(req, 0, 46);
-	*((short_word*)(req)) = htons(1); //Hardware type = ar_hrd
-	*((short_word*)(req + 2)) = htons(0x0800); //Protocol type = Ethertype_IP
-	*((byte*)(req + 4)) = 6; //Hardware length = 6
-	*((byte*)(req + 5)) = 4; //Protocol length = 4
-	*((short_word*)(req + 6)) = htons(1); //ar_op
-	*((uint64_t*)(req + 8)) = src_MAC_addr; //Source MAC address
-	*((word*)(req + 14)) = inet_addr(nic->myIP.c_str()); //Source IP address
-	*((word*)(req + 24)) = inet_addr(ip_addr.c_str()); //Destination IP address
+	*((short_word*)(req)) = htons(1);
+	*((short_word*)(req + 2)) = htons(0x0800); 
+	*((byte*)(req + 4)) = 6; 
+	*((byte*)(req + 5)) = 4; 
+	*((short_word*)(req + 6)) = htons(1); 
+	*((uint64_t*)(req + 8)) = src_MAC_addr; 
+	*((word*)(req + 14)) = inet_addr(nic->myIP.c_str()); 
+	*((word*)(req + 24)) = inet_addr(ip_addr.c_str());
+}
+
+void pushNewData(dataToSend * &data_to_send, const size_t &sendDataLen, byte * sendData, cell_C * cell)
+{
+	data_to_send = new dataToSend();
+	data_to_send->length = sendDataLen;
+	data_to_send->data = new byte[sendDataLen];
+	memcpy(data_to_send->data, sendData, sendDataLen);
+	cell->queue_p->push_back(data_to_send);
 }
 
 string L2_ARP::arpresolve(string ip_addr, byte *sendData, size_t sendDataLen)
 {
-	//check if given address is my IP
-	if (ip_addr.compare(nic->myIP) == 0 || ip_addr.compare("127.0.0.1") == 0)
+	if (ip_addr.compare(nic->myIP) == 0 || ip_addr.compare("127.0.0.1") == 0) // If self IP
 		return nic->myMACAddr;
 
-	CACHE_LOCK;
-	//check if the ip is in the cache
+	pthread_mutex_lock(&lock_cache);
+	string res = "";
 	cell_C* cell = (cell_C*)(this->arplookup(ip_addr, false));
-	string result = "";
-	if (cell != NULL) //found
+	dataToSend* data_to_send;
+
+	if (cell != NULL) // if IP in chache
 	{
-		if (!cell->mac_is_known)
+		if (cell->mac_is_known)  // MAC is known
+		{
+			res = cell->mac_addr;
+			cell->used_last = time(0);
+		}
+		else // MAC is unknown
 		{
 			//not recognized - push to waiting packets queue
-			dataToSend* d = new dataToSend();
-			d->data = new byte[sendDataLen];
-			memcpy(d->data, sendData, sendDataLen);
-			d->length = sendDataLen;
-			cell->queue_p->push_back(d);
-		}
-		else
-		{
-			//recognizrd - use time set to 0
-			cell->used_last = time(0);
-			result = cell->mac_addr;
+			pushNewData(data_to_send, sendDataLen, sendData, cell);
 		}
 	}
-	else
+	else // IP isn't in cache, create new enrey and make ARP request
 	{
-		//create new entry in the cache
 		cell = (cell_C*)(this->arplookup(ip_addr, true));
-		//push packet to waiting queue
-		dataToSend* d = new dataToSend();
-		d->data = new byte[sendDataLen];
-		memcpy(d->data, sendData, sendDataLen);
-		d->length = sendDataLen;
-		cell->queue_p->push_back(d);
+		pushNewData(data_to_send, sendDataLen, sendData, cell);
 		cache.push_back(cell);
-		//arp request sending
 		arprequest(cell->ip_addr);
 	}
-	CACHE_UNLOCK;
-	return result;
+	pthread_mutex_unlock(&lock_cache);
+	return res;
 }
 
 
