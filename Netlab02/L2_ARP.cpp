@@ -156,37 +156,45 @@ void L2_ARP::setNIC(NIC* nic) { this->nic = nic; }
 
 int L2_ARP::arprequest(string ip_addr)
 {
-	word mac_int[6];
-	byte mac_char[6];
-	uint64_t src_mac;
-	sscanf(nic->myMACAddr.c_str(), "%x:%x:%x:%x:%x:%x", &mac_int[5], &mac_int[4], &mac_int[3], &mac_int[2], &mac_int[1], &mac_int[0]);
-	for (int i = 0; i < 6; i++) { mac_char[i] = (unsigned char)mac_int[5 - i]; }
-	src_mac = *((uint64_t*)mac_char);
+	word macAddr_asInt[6];
+	byte macAddr_asChar[6];
+	uint64_t src_MAC_addr;
+	byte* req;
 
-	//print request 
+	sscanf(nic->myMACAddr.c_str(), "%x:%x:%x:%x:%x:%x", &macAddr_asInt[5], &macAddr_asInt[4], &macAddr_asInt[3], &macAddr_asInt[2], &macAddr_asInt[1], &macAddr_asInt[0]);
+	for (int i = 0; i < 6; i++) { 
+		macAddr_asChar[i] = (unsigned char)macAddr_asInt[5 - i]; 
+	}
+	src_MAC_addr = *((uint64_t*)macAddr_asChar);
+
+	/* NOT NEEDED MAYBE ???
 	PRINT_LOCK;
 	cout << "Sending ARP Packet: " << ip_addr << ", what is your MAC?\n";
 	cout << "< ARP(28 bytes) ::" << " , HardwareType = " << 1 << " , ProtocolType = 0x" << std::hex << 0x0800 << std::dec;
 	cout << " , HardwareLength = " << (short_word)6 << " , ProtocolLength = " << (short_word)4 << " , SenderMAC = " << nic->myMACAddr;
 	cout << " , SenderIP = " << nic->myIP << " , TargetMAC = " << "00:00:00:00:00:00" << " , TargetIP = " << ip_addr << " , >\n\n";
 	PRINT_UNLOCK;
+	*/
 
-	//build the request
-	byte* request = new byte[46]; //ARP data size = 46
-	memset(request, 0, 46);
-	*((short_word*)(request)) = htons(1); //Hardware type = ar_hrd
-	*((short_word*)(request + 2)) = htons(0x0800); //Protocol type = Ethertype_IP
-	*((byte*)(request + 4)) = 6; //Hardware length = 6
-	*((byte*)(request + 5)) = 4; //Protocol length = 4
-	*((short_word*)(request + 6)) = htons(1); //ar_op
-	*((uint64_t*)(request + 8)) = src_mac; //Source MAC address
-	*((word*)(request + 14)) = inet_addr(nic->myIP.c_str()); //Source IP address
-	*((word*)(request + 24)) = inet_addr(ip_addr.c_str()); //Destination IP address
-
-														   //send
-	int result = nic->getUpperInterface()->sendToL2(request, 28, AF_UNSPEC, "00:00:00:00:00:00", 0x0806, ip_addr);
-	delete[] request;
+	// Construct and send request
+	buildReq(req, src_MAC_addr, ip_addr);
+	int result = nic->getUpperInterface()->sendToL2(req, 28, AF_UNSPEC, "00:00:00:00:00:00", 0x0806, ip_addr);
+	delete[] req;
 	return result;
+}
+
+void L2_ARP::buildReq(byte * &req, const uint64_t &src_MAC_addr, std::string &ip_addr)
+{
+	req = new byte[46]; //ARP data size = 46
+	memset(req, 0, 46);
+	*((short_word*)(req)) = htons(1); //Hardware type = ar_hrd
+	*((short_word*)(req + 2)) = htons(0x0800); //Protocol type = Ethertype_IP
+	*((byte*)(req + 4)) = 6; //Hardware length = 6
+	*((byte*)(req + 5)) = 4; //Protocol length = 4
+	*((short_word*)(req + 6)) = htons(1); //ar_op
+	*((uint64_t*)(req + 8)) = src_MAC_addr; //Source MAC address
+	*((word*)(req + 14)) = inet_addr(nic->myIP.c_str()); //Source IP address
+	*((word*)(req + 24)) = inet_addr(ip_addr.c_str()); //Destination IP address
 }
 
 string L2_ARP::arpresolve(string ip_addr, byte *sendData, size_t sendDataLen)
