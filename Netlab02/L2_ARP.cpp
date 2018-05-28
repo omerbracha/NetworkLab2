@@ -59,10 +59,11 @@ void* checkCache(void *arpAsVoid)
 	cell_C* cell;
 	double since_last_t;
 	double since_used_t;
-	
+	string print_msg;
+
 	while (thread_c_continue)
 	{
-		Sleep(5000);	
+		Sleep(5000);
 		pthread_mutex_lock(&lock_cache);
 		for (vector<cell_C*>::iterator cache_iter = cache.begin(); cache_iter != cache.end();) //iterate cache
 		{
@@ -73,6 +74,8 @@ void* checkCache(void *arpAsVoid)
 
 			if (since_used_t >= 200.0) // Delet if not used in last 200 secs
 			{
+				print_msg = "IP timout. " + cell->ip_addr + "deleted\n"; // TODO - MAYBE NOT NEEDED
+				printMsg(print_msg); // TODO - MAYBE NOT NEEDED
 				delCell(cell, cache_iter);
 			}
 
@@ -92,7 +95,7 @@ void resendReq(cell_C * cell, double since_last_t, L2_ARP * l2_arp, const time_t
 	string print_msg;
 	if (!cell->mac_is_known)
 	{
-		if ( (since_last_t >= 1) && (cell->number_sent < 5) )
+		if ((since_last_t >= 1) && (cell->number_sent < 5))
 		{
 			print_msg = "Resending IP: " + cell->ip_addr + "\n"; // TODO - ,AYBE NO NEEDED
 			printMsg(print_msg); // TODO - MAYBE NOT NEEDED
@@ -114,8 +117,7 @@ void resendReq(cell_C * cell, double since_last_t, L2_ARP * l2_arp, const time_t
 
 void delCell(cell_C * cell, std::_Vector_iterator<std::_Vector_val<std::_Simple_types<cell_C *>>> &cache_iter)
 {
-	string print_msg = "IP timout. " + cell->ip_addr + "deleted\n";
-	printMsg(print_msg);
+
 	for (vector<dataToSend*>::iterator cell_it = cell->queue_p->begin(); cell_it != cell->queue_p->end(); ++cell_it)
 	{
 		delete[](*cell_it)->data;
@@ -129,25 +131,21 @@ void delCell(cell_C * cell, std::_Vector_iterator<std::_Vector_val<std::_Simple_
 /**
 * Implemented for you
 */
-L2_ARP::L2_ARP(bool debug) : debug(debug) { pthread_mutex_init(&lock_cache, NULL); pthread_create(&thread_c, NULL, checkCache, this); }
+L2_ARP::L2_ARP(bool debug) : debug(debug) {
+	pthread_mutex_init(&lock_cache, NULL);
+	pthread_create(&thread_c, NULL, checkCache, this);
+}
 
 L2_ARP::~L2_ARP()
 {
-	//make the cache thread to stop and wait for it to join
+	// Wait for cache thread to join and cleanup
 	thread_c_continue = false;
 	pthread_join(thread_c, NULL);
-
-	//memory cleanup
 	pthread_mutex_destroy(&lock_cache);
-	for (vector<cell_C*>::iterator it = cache.begin(); it != cache.end(); it++)
+	for (vector<cell_C*>::iterator cache_iter = cache.begin(); cache_iter != cache.end(); cache_iter++)
 	{
-		cell_C cell = *(*it);
-		for (vector<dataToSend*>::iterator cell_it = cell.queue_p->begin(); cell_it != cell.queue_p->end(); ++cell_it)
-		{
-			delete[](*cell_it)->data;
-			delete (*cell_it);
-		}
-		delete (*it);
+		cell_C* cell = (*cache_iter); // TODO - IF NOT GOOD, PROBLEM WITH TYPE
+		delCell(cell, cache_iter);
 	}
 }
 
