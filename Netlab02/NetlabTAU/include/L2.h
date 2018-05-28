@@ -9,9 +9,11 @@
 #include <string>
 using namespace std;
 
-
 class L3;
 class NIC;
+
+
+
 
 /**
 * \class L2
@@ -84,7 +86,6 @@ public:
 	* impelmented print function for better readbilty
 	*/
 	void L2::printMsg(string msg);
-
 
 	/**
 	* \brief Setter for the pointer to the NIC to be used by this layer.

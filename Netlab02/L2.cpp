@@ -2,6 +2,7 @@
 * Author: Tom Mahler
 * Date: May 2015
 */
+
 #include "L2.h"
 #include "NIC.h"
 #include <iostream>
@@ -53,6 +54,7 @@ void L2::printMsg(string msg)
 /*
 * function to turn int to hex. referance to: https://stackoverflow.com/questions/5100718/integer-to-hex-string-in-c
 */
+
 template< typename T >
 std::string int_to_hex(T i)
 {
@@ -69,11 +71,11 @@ int L2::recvFromL2(byte *recvData, size_t recvDataLen)
 	string destMac = "";		// dest mac address
 	string userMac = "";		// user mac
 	string tmp = "";			// temp string
-	NIC nic = L2::getNIC();		// get NIC 
+	//NIC nic = L2::getNIC();		// get NIC 
 	word type = 0x0;			// mesage type
 	int newSize = 0;			// extracted data size
 	byte* data;					// extraced data
-	
+	int chk = 0;				// check called functions success
 
 	//start handeling header: 
 	if (debug) {
@@ -100,7 +102,7 @@ int L2::recvFromL2(byte *recvData, size_t recvDataLen)
 	}
 
 	// get user mac ()
-	userMac = nic.myMACAddr;
+	userMac = nic->myMACAddr;
 	
 	if (debug) {
 		printMsg("user MAC address is: " + userMac);
@@ -130,7 +132,7 @@ int L2::recvFromL2(byte *recvData, size_t recvDataLen)
 	type = type + recvData[13]; // lower
 	
 	if (debug){
-		printMsg("type is: " + );
+		printMsg("type is: " + int_to_hex(type));
 	}
 
 	// extract data from msg
@@ -140,13 +142,21 @@ int L2::recvFromL2(byte *recvData, size_t recvDataLen)
 
 	// send to correct part
 	if (type == ARP){
-		 ( nic.getARP() )->inarpinput(data, newSize);
-
+		chk = nic->getARP()->inarpinput(data, newSize);
+	}
+	else if (type == IP){
+		chk = upperInterface->recvFromL3(data, newSize);
+	}
+	else {
+		if (debug){
+			printMsg("type is not supported.");
+		}
 	}
 
-
-
-	return 42;
+	// clear
+	delete[] data;
+	// 0 in success.
+	return chk;
 }
 
 int L2::sendToL2(byte *sendData, size_t sendDataLen, uint16_t family, string spec_mac, uint16_t spec_type, string dst_addr)
