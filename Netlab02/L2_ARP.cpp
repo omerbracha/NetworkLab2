@@ -41,71 +41,95 @@ pthread_t thread_c;
 pthread_mutex_t lock_cache;
 bool thread_c_continue = true;
 
+
+void delCell(cell_C * cell, std::_Vector_iterator<std::_Vector_val<std::_Simple_types<cell_C *>>> &cache_iter);
+void resendReq(cell_C * cell, double since_last_t, L2_ARP * l2_arp, const time_t &curr_t);
+void printMsg(string msg)
+{
+	pthread_mutex_lock(&NIC::print_mutex);
+	cout << msg << endl;
+	pthread_mutex_unlock(&NIC::print_mutex);
+}
+
 // Check for needed deletions in cache
-void* delCacheC(void *arpAsVoid)
+void* checkCache(void *arpAsVoid)
 {
 	L2_ARP* l2_arp = (L2_ARP*)arpAsVoid;
-
+	time_t curr_t;
+	cell_C* cell;
+	double since_last_t;
+	double since_used_t;
+	
 	while (thread_c_continue)
 	{
-		Sleep(5000); //wait for 5 seconds and check again
-		
-		CACHE_LOCK;
+		Sleep(5000);	
+		pthread_mutex_lock(&lock_cache);
 		for (vector<cell_C*>::iterator cache_iter = cache.begin(); cache_iter != cache.end();) //iterate cache
 		{
-			time_t curr_t = time(0);
-			cell_C* cell = (*cache_iter);
-			double since_last_t = difftime(curr_t, cell->time_last);
-			double since_used_t = difftime(curr_t, cell->used_last);
+			curr_t = time(0);
+			cell = (*cache_iter);
+			since_last_t = difftime(curr_t, cell->time_last);
+			since_used_t = difftime(curr_t, cell->used_last);
 
-			//not used in last 200 seconds - delete it
-			if (since_used_t >= 200.0)
+			if (since_used_t >= 200.0) // Delet if not used in last 200 secs
 			{
-				PRINT_LOCK; cout << "ARP entry timeout for IP  '" << cell->ip_addr << "'. Dropped.\n"; PRINT_UNLOCK;
-				for (vector<dataToSend*>::iterator cell_it = cell->queue_p->begin(); cell_it != cell->queue_p->end(); ++cell_it)
-				{
-					delete[](*cell_it)->data;
-					delete (*cell_it);
-				}
-				delete (*cache_iter);
-				cache_iter = cache.erase(cache_iter);
+				delCell(cell, cache_iter);
 			}
 
-			else
+			else // Need to send the request again
 			{
-				//send the requests again
-				if (!cell->mac_is_known)
-				{
-					if (cell->number_sent < 5 && since_last_t >= 1)
-					{
-						PRINT_LOCK; cout << "IP " << cell->ip_addr << " send again after 5 seconds.\n";	PRINT_UNLOCK;
-						l2_arp->arprequest(cell->ip_addr);
-						cell->time_last = curr_t;
-						cell->number_sent++;
-					}
-
-					else if (since_last_t >= 20.0)
-					{
-						PRINT_LOCK; cout << "IP " << cell->ip_addr << " flooded for 20 seconds\n";
-						cout << "IP " << cell->ip_addr << " send again after 5 seconds.\n"; PRINT_UNLOCK;
-						l2_arp->arprequest(cell->ip_addr);
-						cell->time_last = curr_t;
-						cell->number_sent = 1;
-					}
-				}
+				resendReq(cell, since_last_t, l2_arp, curr_t);
 				++cache_iter;
 			}
 		}
-		CACHE_UNLOCK;
+		pthread_mutex_unlock(&lock_cache);
 	}
 	return 0;
+}
+
+void resendReq(cell_C * cell, double since_last_t, L2_ARP * l2_arp, const time_t &curr_t)
+{
+	string print_msg;
+	if (!cell->mac_is_known)
+	{
+		if ( (since_last_t >= 1) && (cell->number_sent < 5) )
+		{
+			print_msg = "Resending IP: " + cell->ip_addr + "\n"; // TODO - ,AYBE NO NEEDED
+			printMsg(print_msg); // TODO - MAYBE NOT NEEDED
+			l2_arp->arprequest(cell->ip_addr);
+			cell->number_sent++;
+			cell->time_last = curr_t;
+		}
+
+		else if (since_last_t >= 20.0)
+		{
+			print_msg = "Avoiding ARP flooding, Resending IP: " + cell->ip_addr + "\n"; // TODO - MAYBE NOT NEEDED	
+			printMsg(print_msg); // TODO - MAYBE NOT NEEDED
+			l2_arp->arprequest(cell->ip_addr);
+			cell->number_sent = 1;
+			cell->time_last = curr_t;
+		}
+	}
+}
+
+void delCell(cell_C * cell, std::_Vector_iterator<std::_Vector_val<std::_Simple_types<cell_C *>>> &cache_iter)
+{
+	string print_msg = "IP timout. " + cell->ip_addr + "deleted\n";
+	printMsg(print_msg);
+	for (vector<dataToSend*>::iterator cell_it = cell->queue_p->begin(); cell_it != cell->queue_p->end(); ++cell_it)
+	{
+		delete[](*cell_it)->data;
+		delete (*cell_it);
+	}
+	delete (*cache_iter);
+	cache_iter = cache.erase(cache_iter);
 }
 
 
 /**
 * Implemented for you
 */
-L2_ARP::L2_ARP(bool debug) : debug(debug) { pthread_mutex_init(&lock_cache, NULL); pthread_create(&thread_c, NULL, delCacheC, this); }
+L2_ARP::L2_ARP(bool debug) : debug(debug) { pthread_mutex_init(&lock_cache, NULL); pthread_create(&thread_c, NULL, checkCache, this); }
 
 L2_ARP::~L2_ARP()
 {
@@ -356,6 +380,3 @@ void* L2_ARP::SendArpReply(string itaddr, string isaddr, string hw_tgt, string h
 	delete[] buffer;
 	return result_p;
 }
-
-
-
