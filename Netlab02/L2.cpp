@@ -56,24 +56,9 @@ void L2::printMsg(string msg)
 	pthread_mutex_unlock(&NIC::print_mutex);
 }
 
-int L2::recvFromL2(byte *recvData, size_t recvDataLen)
+void L2::getMacAddr(uint64_t &destMac, byte * recvData, uint64_t &sourceMac, uint64_t &userMac)
 {
-	uint64_t sourceMac = 0;		// source mac address
-	uint64_t destMac = 0;		// dest mac address
-	uint64_t userMac = 0;		// user mac
-	string tmp = "";			// temp string
-	word type = 0x0;			// mesage type
-	int newSize = 0;			// extracted data size
-	byte* data;					// extraced data
-	int chk = 0;				// check called functions success
-
-	//start handeling header: 
-	if (debug) {
-		printMsg("recived Msg from L2:");
-	}
-
-	// get MAC addresses:
-	unsigned int a[6]; // referance to: https://stackoverflow.com/questions/7326123/convert-mac-address-stdstring-into-uint64-t  
+	unsigned int a[6];
 	int last = -1;
 	int rc = sscanf(nic->myMACAddr.c_str(), "%x:%x:%x:%x:%x:%x",
 		a + 5, a + 4, a + 3, a + 2, a + 1, a + 0, &last);
@@ -83,84 +68,119 @@ int L2::recvFromL2(byte *recvData, size_t recvDataLen)
 		((byte*)&sourceMac)[i] = recvData[6 + i];
 		userMac = (userMac << 8) + a[i];
 	}
-
-	if (debug) {
-		printMsg("");
-		printMsg("IN L2_RECV:");
-		
-		char ps[20];
-		string target;
-
-		// user
-		sprintf(ps, "%.2x:%.2x:%.2x:%.2x:%.2x:%.2x", ((unsigned char*)(&userMac))[0], ((unsigned char*)(&userMac))[1], ((unsigned char*)(&userMac))[2], ((unsigned char*)(&userMac))[3], ((unsigned char*)(&userMac))[4], ((unsigned char*)(&userMac))[5]);
-		target = (std::string)ps;
-		printMsg("user MAC addr. is: " + target);
-
-		// dest
-		sprintf(ps, "%.2x:%.2x:%.2x:%.2x:%.2x:%.2x", ((unsigned char*)(&destMac))[0], ((unsigned char*)(&destMac))[1], ((unsigned char*)(&destMac))[2], ((unsigned char*)(&destMac))[3], ((unsigned char*)(&destMac))[4], ((unsigned char*)(&destMac))[5]);
-		target = (std::string)ps;
-		printMsg("destination MAC addr. is: " + target);
-
-		// source
-		sprintf(ps, "%.2x:%.2x:%.2x:%.2x:%.2x:%.2x", ((unsigned char*)(&sourceMac))[0], ((unsigned char*)(&sourceMac))[1], ((unsigned char*)(&sourceMac))[2], ((unsigned char*)(&sourceMac))[3], ((unsigned char*)(&sourceMac))[4], ((unsigned char*)(&sourceMac))[5]);
-		target = (std::string)ps;
-		printMsg("source MAC addr. is: " + target);
+	if (debug) { // Print MAC addresses
+		printAddr(userMac, destMac, sourceMac);
 	}
+}
 
-	// check if it's not to the user
-	if (userMac != destMac){
-		if (debug){
-			printMsg("");
-			printMsg("msg not to user. not continued.");
-			printMsg("");
-		}
-		return 0;
-	}
+void L2::printAddr(uint64_t &userMac, uint64_t &destMac, uint64_t &sourceMac)
+{
+	string print_msg;
+	print_msg = "IN L2_RECV:";
 
-	// check if it's from the user:
-	if (userMac == sourceMac){
-		if (debug){
-			printMsg("");
-			printMsg("msg originated by user. not continued.");
-		}
-		return 0;
-	}
+	char ps[20];
+	string target;
 
-	// get msg type
-	type = type + recvData[12]; // upper
+	// User MAC address
+	sprintf(ps, "%.2x:%.2x:%.2x:%.2x:%.2x:%.2x", ((unsigned char*)(&userMac))[0], ((unsigned char*)(&userMac))[1], ((unsigned char*)(&userMac))[2], ((unsigned char*)(&userMac))[3], ((unsigned char*)(&userMac))[4], ((unsigned char*)(&userMac))[5]);
+	target = (std::string)ps;
+	print_msg += "\nUser MAC address is: " + target;
+
+	// Destination MAC address
+	sprintf(ps, "%.2x:%.2x:%.2x:%.2x:%.2x:%.2x", ((unsigned char*)(&destMac))[0], ((unsigned char*)(&destMac))[1], ((unsigned char*)(&destMac))[2], ((unsigned char*)(&destMac))[3], ((unsigned char*)(&destMac))[4], ((unsigned char*)(&destMac))[5]);
+	target = (std::string)ps;
+	print_msg += "\nDestination MAC address is: " + target;
+
+	// Source MAC address
+	sprintf(ps, "%.2x:%.2x:%.2x:%.2x:%.2x:%.2x", ((unsigned char*)(&sourceMac))[0], ((unsigned char*)(&sourceMac))[1], ((unsigned char*)(&sourceMac))[2], ((unsigned char*)(&sourceMac))[3], ((unsigned char*)(&sourceMac))[4], ((unsigned char*)(&sourceMac))[5]);
+	target = (std::string)ps;
+	print_msg += "\nSource MAC address is: " + target;
+	printMsg(print_msg);
+}
+
+void L2::getMsgType(word &type, byte * recvData)
+{
+	type = type + recvData[12];
 	type = type << 8;
-	type = type + recvData[13]; // lower
-
-	if (debug){
-		//printMsg( "type is: " + printf("%x", type) );
+	type = type + recvData[13];
+	if (debug) {
 		printMsg("type is: " + type);
 	}
+}
 
-	// extract data from msg
+void L2::extractData(int &newSize, const size_t &recvDataLen, byte * &data, byte * recvData)
+{
 	newSize = recvDataLen - E_H_S;
 	data = new byte[newSize];
 	memcpy(data, recvData + E_H_S, newSize);
+}
 
-	// send to correct part
-	if (type == ARP){
+void L2::sendByType(const word &type, int &chk, byte * data, int newSize, std::string &print_msg)
+{
+	if (type == ARP) {
 		chk = nic->getARP()->in_arpinput(data, newSize);
 	}
-	else if (type == IP){
+	else if (type == IP) {
 		chk = upperInterface->recvFromL3(data, newSize);
 	}
 	else {
-		if (debug){
-			printMsg("");
-			printMsg("type is not supported.");
-			printMsg("");
+		if (debug) {
+			print_msg = "Invalid type";
+			printMsg(print_msg);
 		}
 	}
+}
 
-	// clear
+int L2::recvFromL2(byte *recvData, size_t recvDataLen)
+{
+	uint64_t sourceMac = 0;		// Source mac address
+	uint64_t destMac = 0;		// Destination mac address
+	uint64_t userMac = 0;		// User mac
+	word type = 0x0;			// Mesage type
+	int newSize = 0;			// Extracted data size
+	byte* data;					// Extracted data
+	string print_msg;
+	int res = 0;
+
+	if (debug) {
+		printMsg("Received Msg from L2:");
+	}
+
+	// Get MAC addresses:
+	getMacAddr(destMac, recvData, sourceMac, userMac);
+
+	// Check that the user is not the destination
+	if (userMac != destMac) {
+		if (debug) {
+			print_msg = "\nMessage not to user. Packet dropped.";
+			printMsg(print_msg);
+		}
+		return 0;
+	}
+
+	// Check that the user is the source
+	if (userMac == sourceMac) {
+		if (debug) {
+			print_msg = "Message source is the user. Packet dropped.";
+			printMsg(print_msg);
+		}
+		return 0;
+	}
+
+	// Get message type
+	getMsgType(type, recvData);
+
+	// Extract data
+	extractData(newSize, recvDataLen, data, recvData);
+
+	// Send to correct part
+	sendByType(type, res, data, newSize, print_msg);
+
+	// Clear
 	delete[] data;
 
-	// 0 in success.
-	return chk;
+	// 0 if successful.
+	return res;
 }
 
 int L2::sendToL2(byte *sendData, size_t sendDataLen, uint16_t family, string spec_mac, uint16_t spec_type, string dst_addr)
@@ -294,34 +314,11 @@ void L2::print_header(std::string &print_msg, uint64_t &destMac, uint64_t &sourc
 	// dest
 	sprintf(ps, "%.2x:%.2x:%.2x:%.2x:%.2x:%.2x", ((unsigned char*)(&destMac))[0], ((unsigned char*)(&destMac))[1], ((unsigned char*)(&destMac))[2], ((unsigned char*)(&destMac))[3], ((unsigned char*)(&destMac))[4], ((unsigned char*)(&destMac))[5]);
 	target = (std::string)ps;
-	printMsg("destination MAC addr. is: " + target);
+	
 	// source
 	sprintf(ps, "%.2x:%.2x:%.2x:%.2x:%.2x:%.2x", ((unsigned char*)(&sourceMac))[0], ((unsigned char*)(&sourceMac))[1], ((unsigned char*)(&sourceMac))[2], ((unsigned char*)(&sourceMac))[3], ((unsigned char*)(&sourceMac))[4], ((unsigned char*)(&sourceMac))[5]);
 	target = (std::string)ps;
-	printMsg("source MAC addr. is: " + target);
-	printMsg("");
-
-	//print_msg = "Ethernet packet sent (14 bytes). DestinationMAC = ";
-	//for (int i = 0; i < 6; i++)
-	//{
-	//	print_msg += "%.2x", ((unsigned char*)(&destmac))[i];
-	//	if (i != 5)
-	//	{
-	//		print_msg += ":";
-	//	}
-	//}
-	//print_msg += " SourceMAC = ";
-	//for (int i = 0; i < 6; i++)
-	//{
-	//	print_msg += "%.2x", ((unsigned char*)(&srcmac))[i];
-	//	if (i != 5)
-	//	{
-	//		print_msg += ":";
-	//	}
-	//}
-	//print_msg += "\n";
-	//printMsg(print_msg);
-
+	printMsg("destination MAC addr. is: " + target + "\n" + "source MAC addr. is: " + target + "\n");
 }
 
 /**

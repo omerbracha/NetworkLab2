@@ -67,11 +67,11 @@ void* checkCache(void *arpAsVoid)
 			since_last_t = difftime(curr_t, cell->time_last);
 			since_used_t = difftime(curr_t, cell->used_last);
 
-			if (since_used_t >= 200.0) // Delet if not used in last 200 secs
+			if (since_used_t >= 200.0) // Delete if not used in last 200 secs
 			{
-				print_msg = "IP timout. " + cell->ip_addr + "deleted\n"; // TODO - MAYBE NOT NEEDED
-				printMsg(print_msg); // TODO - MAYBE NOT NEEDED
-				delCell(cell, cache_iter);
+					print_msg = "IP timout. " + cell->ip_addr + "deleted\n";
+					printMsg(print_msg);
+					delCell(cell, cache_iter);
 			}
 
 			else // Need to send the request again
@@ -92,8 +92,8 @@ void resendReq(cell_C * cell, double since_last_t, L2_ARP * l2_arp, const time_t
 	{
 		if ((since_last_t >= 1) && (cell->number_sent < 5))
 		{
-			print_msg = "Resending IP: " + cell->ip_addr + "\n"; // TODO - ,AYBE NO NEEDED
-			printMsg(print_msg); // TODO - MAYBE NOT NEEDED
+			print_msg = "Resending IP: " + cell->ip_addr + "\n";
+			printMsg(print_msg);
 			l2_arp->arprequest(cell->ip_addr);
 			cell->number_sent++;
 			cell->time_last = curr_t;
@@ -101,8 +101,8 @@ void resendReq(cell_C * cell, double since_last_t, L2_ARP * l2_arp, const time_t
 
 		else if (since_last_t >= 20.0)
 		{
-			print_msg = "Avoiding ARP flooding, Resending IP: " + cell->ip_addr + "\n"; // TODO - MAYBE NOT NEEDED	
-			printMsg(print_msg); // TODO - MAYBE NOT NEEDED
+			print_msg = "Avoiding ARP flooding, Resending IP: " + cell->ip_addr + "\n";	
+			printMsg(print_msg);
 			l2_arp->arprequest(cell->ip_addr);
 			cell->number_sent = 1;
 			cell->time_last = curr_t;
@@ -139,7 +139,7 @@ L2_ARP::~L2_ARP()
 	pthread_mutex_destroy(&lock_cache);
 	for (vector<cell_C*>::iterator cache_iter = cache.begin(); cache_iter != cache.end(); cache_iter++)
 	{
-		cell_C* cell = (*cache_iter); // TODO - IF NOT GOOD, PROBLEM WITH TYPE
+		cell_C* cell = (*cache_iter);
 		delCell(cell, cache_iter);
 	}
 }
@@ -155,22 +155,21 @@ int L2_ARP::arprequest(string ip_addr)
 	byte macAddr_asChar[6];
 	uint64_t src_MAC_addr;
 	byte* req;
+	string print_msg;
 
 	sscanf(nic->myMACAddr.c_str(), "%x:%x:%x:%x:%x:%x", &macAddr_asInt[5], &macAddr_asInt[4], &macAddr_asInt[3], &macAddr_asInt[2], &macAddr_asInt[1], &macAddr_asInt[0]);
 	for (int i = 0; i < 6; i++) {
 		macAddr_asChar[i] = (unsigned char)macAddr_asInt[5 - i];
 	}
 	src_MAC_addr = *((uint64_t*)macAddr_asChar);
-
-	/* NOT NEEDED MAYBE ???
-	PRINT_LOCK;
-	cout << "Sending ARP Packet: " << ip_addr << ", what is your MAC?\n";
-	cout << "< ARP(28 bytes) ::" << " , HardwareType = " << 1 << " , ProtocolType = 0x" << std::hex << 0x0800 << std::dec;
-	cout << " , HardwareLength = " << (short_word)6 << " , ProtocolLength = " << (short_word)4 << " , SenderMAC = " << nic->myMACAddr;
-	cout << " , SenderIP = " << nic->myIP << " , TargetMAC = " << "00:00:00:00:00:00" << " , TargetIP = " << ip_addr << " , >\n\n";
-	PRINT_UNLOCK;
-	*/
-
+	print_msg = " Packet info report:\n| Hardware: 1";
+	print_msg += "\n| Protocol:     " + std::to_string(0x800);
+	print_msg += "\n| Source MAC : " + nic->myMACAddr;
+	print_msg += "\n| Source IP : " + nic->myIP;
+	print_msg += "\n| Dest MAC : 00:00:00:00:00:00";
+	print_msg += "\n| Dest IP : " + ip_addr;
+	printMsg(print_msg);
+	
 	// Construct and send request
 	buildReq(req, src_MAC_addr, ip_addr);
 	int result = nic->getUpperInterface()->sendToL2(req, 28, AF_UNSPEC, "00:00:00:00:00:00", 0x0806, ip_addr);
@@ -306,7 +305,7 @@ void L2_ARP::secondOpFunc(std::string &ip_src_addr, std::string &print_msg, std:
 	cell_C* cell = (cell_C*)arplookup(ip_src_addr, false);
 	if (cell == NULL) // Cell not found
 	{
-		print_msg = "Packet from another host. addind to cache"; // TODO - CHECK IF NEEDED
+		print_msg = "Packet from another host. addind to cache";
 		printMsg(print_msg);
 
 		if ((ip_src_addr.compare("127.0.0.1")) != 0 && (ip_src_addr.compare(nic->myIP) != 0)) // IP is not host
@@ -321,8 +320,6 @@ void L2_ARP::secondOpFunc(std::string &ip_src_addr, std::string &print_msg, std:
 		cell->mac_is_known = true;
 		for (vector<dataToSend*>::iterator cell_iter = cell->queue_p->begin(); cell_iter != cell->queue_p->end(); ++cell_iter)
 		{
-			//print_msg = "Next packet waiting to be sent: " + (*((cell->queue_p)->begin()))->data + ".\n"; // TODO - CHECK IF NEEDED
-			//printMsg(print_msg);
 			res += nic->getUpperInterface()->sendToL2((*cell_iter)->data, (*cell_iter)->length, AF_UNSPEC, cell->mac_addr, 0x0800, cell->ip_addr);
 			delete[](*cell_iter)->data;
 			delete (*cell_iter);
@@ -347,8 +344,8 @@ int L2_ARP::in_arpinput(byte *recvData, size_t recvDataLen)
 	char buff[50];
 	int res = 0;
 
-	string print_msg = "Received ARP packet.\n"; // TODO - CHECK IF NEEDED
-	printMsg(print_msg); // TODO - CHECK IF NEEDED
+	string print_msg = "Received ARP packet.\n";
+	printMsg(print_msg);
 
 	if (recvDataLen != 46) { // Check data length 
 		print_msg = "Data length invalid, packet dropped.\n";
@@ -362,16 +359,14 @@ int L2_ARP::in_arpinput(byte *recvData, size_t recvDataLen)
 	// Convert address to strings
 	convertAddr2String(buff, recvData, ip_src_addr, ip_dest_addr, mac_src_addr, mac_dest_addr);
 
-
-	/* TODO - CHECK IF NEEDED
 	//print packet info
-	PRINT_LOCK;
-	cout << "< ARP(28 bytes) ::" << " , HardwareType = " << hardware << " , ProtocolType = 0x" << std::hex << protocol << std::dec;
-	cout << " , HardwareLength = " << (int)h_len << " , ProtocolLength = " << p_len << " , SenderMAC = " << mac_src_addr;
-	cout << " , SenderIP = " << ip_src_addr << " , TargetMAC = " << mac_dest_addr << " , TargetIP = " << ip_dest_addr << " , >\n\n";
-	PRINT_UNLOCK;
-	*/
-
+	print_msg = " Packet info report:\n| Hardware: " + std::to_string(hardware);
+	print_msg += "\n| Protocol:     " + std::to_string(protocol);
+	print_msg += "\n| Source MAC : " + mac_src_addr;
+	print_msg += "\n| Source IP : " + ip_src_addr;
+	print_msg += "\n| Dest MAC : " + mac_dest_addr;
+	print_msg += "\n| Dest IP : " + ip_dest_addr;
+	printMsg(print_msg);
 
 	if ((h_len != 6) || (p_len != 4) || (protocol != 0x0800) || (hardware != 1)) // Check parameters
 	{
@@ -439,19 +434,18 @@ void* L2_ARP::SendArpReply(string itaddr, string isaddr, string hw_tgt, string h
 	word macAddr_asInt[6];
 	byte macAddr_asChar[6];
 	byte* pack_reply;
+	string print_msg;
 
 	// Convert MAC source and destination addresses to int
 	convertMacAddr(hw_tgt, macAddr_asInt, macAddr_asChar, mac_src_addr, hw_snd, mac_dest_addr);
-
-	/* TODO - CHECK IF NEEDED
-	//print info of reply packet
-	PRINT_LOCK;
-	cout << "ARP Reply: this is " << isaddr << "!\n" << "< ARP(28 bytes) ::" << " , HardwareType = " << 1;
-	cout << " , ProtocolType = 0x" << std::hex << 0x0800 << std::dec << " , HardwareLength = " << (uint16_t)6;
-	cout << " , ProtocolLength = " << (uint16_t)4 << " , SenderMAC = " << hw_tgt << " , SenderIP = " << itaddr;
-	cout << " , TargetMAC = " << hw_snd << " , TargetIP = " << isaddr << " , >\n\n";
-	PRINT_UNLOCK;
-	*/
+	
+	print_msg = "Packet ARP reply info:\n| Hardware: 1";
+	print_msg += "\n| Protocol:     " + std::to_string(0x800);
+	print_msg += "\n| Source MAC : " + mac_src_addr;
+	print_msg += "\n| Source IP : " + itaddr;
+	print_msg += "\n| Dest MAC : " + mac_dest_addr;
+	print_msg += "\n| Dest IP : " + isaddr;
+	printMsg(print_msg);
 
 	// Build and send reply packet
 	buildReply(pack_reply, mac_src_addr, itaddr, mac_dest_addr, isaddr);

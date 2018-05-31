@@ -43,7 +43,7 @@ int main()
 	*/
 	
 	//string dstIP = "AdS.aN.iP.HeRe";
-	string dstIP = "8.8.8.8";
+	string dstIP = "192.168.43.184";
 
 	/* L4 tries to resolves destination IP address, if it can't it passes NULL string to L3.*/
 	Transport->sendToL4((byte *)test, testLen, dstIP, "");

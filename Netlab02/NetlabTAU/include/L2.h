@@ -80,6 +80,16 @@ public:
 
 	void print_header(std::string &print_msg, uint64_t &destmac, uint64_t &srcmac, short_word &type_word);
 
+	void getMacAddr(uint64_t &destMac, byte * recvData, uint64_t &sourceMac, uint64_t &userMac);
+
+	void printAddr(uint64_t &userMac, uint64_t &destMac, uint64_t &sourceMac);
+
+	void getMsgType(word &type, byte * recvData);
+
+	void extractData(int &newSize, const size_t &recvDataLen, byte * &data, byte * recvData);
+
+	void sendByType(const word &type, int &chk, byte * data, int newSize, std::string &print_msg);
+
 	/**
 	* \brief L2 input routine.
 	*
@@ -127,8 +137,6 @@ public:
 	*/
 	std::string getLowestInterface();
 
-	
-
 private:
 	bool debug;
 	L3 * upperInterface;
@@ -136,5 +144,3 @@ private:
 };
 
 #endif /* L2_H_ */
-
-
