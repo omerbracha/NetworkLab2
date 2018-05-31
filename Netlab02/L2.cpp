@@ -85,6 +85,9 @@ int L2::recvFromL2(byte *recvData, size_t recvDataLen)
 	}
 
 	if (debug) {
+		printMsg("");
+		printMsg("IN L2_RECV:");
+		
 		char ps[20];
 		string target;
 
@@ -107,7 +110,9 @@ int L2::recvFromL2(byte *recvData, size_t recvDataLen)
 	// check if it's not to the user
 	if (userMac != destMac){
 		if (debug){
+			printMsg("");
 			printMsg("msg not to user. not continued.");
+			printMsg("");
 		}
 		return 0;
 	}
@@ -115,6 +120,7 @@ int L2::recvFromL2(byte *recvData, size_t recvDataLen)
 	// check if it's from the user:
 	if (userMac == sourceMac){
 		if (debug){
+			printMsg("");
 			printMsg("msg originated by user. not continued.");
 		}
 		return 0;
@@ -126,7 +132,8 @@ int L2::recvFromL2(byte *recvData, size_t recvDataLen)
 	type = type + recvData[13]; // lower
 
 	if (debug){
-		printMsg( "type is: " + printf("%x", type) );
+		//printMsg( "type is: " + printf("%x", type) );
+		printMsg("type is: " + type);
 	}
 
 	// extract data from msg
@@ -143,7 +150,9 @@ int L2::recvFromL2(byte *recvData, size_t recvDataLen)
 	}
 	else {
 		if (debug){
+			printMsg("");
 			printMsg("type is not supported.");
+			printMsg("");
 		}
 	}
 
@@ -227,13 +236,13 @@ void L2::createHeader(word  macAddr_asInt[6], byte  macAddr_asChar[6], uint64_t 
 		macAddr_asChar[i] = (unsigned char)macAddr_asInt[i];
 	}
 	src_MAC_addr = *((uint64_t*)macAddr_asChar);
-	data_size = 14 + ((sendDataLen < 46) ? 46 : sendDataLen);  //Ethernet Header size = 14, zeros pad if needed
+	data_size = 14 + ((sendDataLen < 46) ? 46 : sendDataLen);	//Ethernet Header size = 14, zeros pad if needed
 	data_toSend = new byte[data_size];
 	memset(data_toSend, 0, data_size);
-	memcpy(data_toSend, (byte*)(&dest_MAC_addr), 6); //Destination MAC address
-	memcpy(data_toSend + 6, (byte*)(&src_MAC_addr), 6); //Source MAC address
-	memcpy(data_toSend + 12, &word_type, 2); //type
-	memcpy(data_toSend + 14, sendData, sendDataLen); //data
+	memcpy(data_toSend, (byte*)(&dest_MAC_addr), 6);			//Destination MAC address
+	memcpy(data_toSend + 6, (byte*)(&src_MAC_addr), 6);			//Source MAC address
+	memcpy(data_toSend + 12, &word_type, 2);					//type
+	memcpy(data_toSend + 14, sendData, sendDataLen);			//data
 }
 
 void L2::parseMACaddrUNSPEC(std::string &spec_mac, word  macAddr_asInt[6], byte  macAddr_asChar[6], uint64_t &dest_MAC_addr)
@@ -275,28 +284,44 @@ void L2::getGatewayIP(std::string &dst_addr)
 		dst_addr = nic->myDefaultGateway;
 }
 
-void L2::print_header(std::string &print_msg, uint64_t &destmac, uint64_t &srcmac, short_word &type_word)
+void L2::print_header(std::string &print_msg, uint64_t &destMac, uint64_t &sourceMac, short_word &type_word)
 {
-	print_msg = "Ethernet packet sent (14 bytes). DestinationMAC = ";
-	for (int i = 0; i < 6; i++)
-	{
-		print_msg += "%.2x", ((unsigned char*)(&destmac))[i];
-		if (i != 5)
-		{
-			print_msg += ":";
-		}
-	}
-	print_msg += " SourceMAC = ";
-	for (int i = 0; i < 6; i++)
-	{
-		print_msg += "%.2x", ((unsigned char*)(&srcmac))[i];
-		if (i != 5)
-		{
-			print_msg += ":";
-		}
-	}
-	print_msg += "\n";
-	printMsg(print_msg);
+
+	printMsg("IN PRINT_HEADER:");
+	char ps[20];
+	string target;
+
+	// dest
+	sprintf(ps, "%.2x:%.2x:%.2x:%.2x:%.2x:%.2x", ((unsigned char*)(&destMac))[0], ((unsigned char*)(&destMac))[1], ((unsigned char*)(&destMac))[2], ((unsigned char*)(&destMac))[3], ((unsigned char*)(&destMac))[4], ((unsigned char*)(&destMac))[5]);
+	target = (std::string)ps;
+	printMsg("destination MAC addr. is: " + target);
+	// source
+	sprintf(ps, "%.2x:%.2x:%.2x:%.2x:%.2x:%.2x", ((unsigned char*)(&sourceMac))[0], ((unsigned char*)(&sourceMac))[1], ((unsigned char*)(&sourceMac))[2], ((unsigned char*)(&sourceMac))[3], ((unsigned char*)(&sourceMac))[4], ((unsigned char*)(&sourceMac))[5]);
+	target = (std::string)ps;
+	printMsg("source MAC addr. is: " + target);
+	printMsg("");
+
+	//print_msg = "Ethernet packet sent (14 bytes). DestinationMAC = ";
+	//for (int i = 0; i < 6; i++)
+	//{
+	//	print_msg += "%.2x", ((unsigned char*)(&destmac))[i];
+	//	if (i != 5)
+	//	{
+	//		print_msg += ":";
+	//	}
+	//}
+	//print_msg += " SourceMAC = ";
+	//for (int i = 0; i < 6; i++)
+	//{
+	//	print_msg += "%.2x", ((unsigned char*)(&srcmac))[i];
+	//	if (i != 5)
+	//	{
+	//		print_msg += ":";
+	//	}
+	//}
+	//print_msg += "\n";
+	//printMsg(print_msg);
+
 }
 
 /**
