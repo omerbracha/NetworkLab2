@@ -12,6 +12,7 @@
 #include <string>
 #include "L3.h"
 #include "L2_ARP.h"
+#include <sstream>
 
 using namespace std;
 
@@ -55,17 +56,12 @@ void L2::printMsg(string msg)
 	pthread_mutex_unlock(&NIC::print_mutex);
 }
 
-/*
-* function to turn int to hex. referance to: https://stackoverflow.com/questions/5100718/integer-to-hex-string-in-c
-*/
-
 int L2::recvFromL2(byte *recvData, size_t recvDataLen)
 {
-	string sourceMac = "";		// source mac address
-	string destMac = "";		// dest mac address
-	string userMac = "";		// user mac
+	uint64_t sourceMac = 0;		// source mac address
+	uint64_t destMac = 0;		// dest mac address
+	uint64_t userMac = 0;		// user mac
 	string tmp = "";			// temp string
-	//NIC nic = L2::getNIC();		// get NIC 
 	word type = 0x0;			// mesage type
 	int newSize = 0;			// extracted data size
 	byte* data;					// extraced data
@@ -76,34 +72,40 @@ int L2::recvFromL2(byte *recvData, size_t recvDataLen)
 		printMsg("recived Msg from L2:");
 	}
 
-	// get source mac adress:
-	for (size_t i = 6; i < 12; i++)
+	// get MAC addresses:
+	unsigned int a[6]; // referance to: https://stackoverflow.com/questions/7326123/convert-mac-address-stdstring-into-uint64-t  
+	int last = -1;
+	int rc = sscanf(nic->myMACAddr.c_str(), "%x:%x:%x:%x:%x:%x",
+		a + 5, a + 4, a + 3, a + 2, a + 1, a + 0, &last);
+	for (int i = 0; i < 6; i++)
 	{
-		sourceMac = sourceMac + std::to_string(recvData[i]) + ":";
+		((byte*)&destMac)[i] = recvData[i];
+		((byte*)&sourceMac)[i] = recvData[6 + i];
+		userMac = (userMac << 8) + a[i];
 	}
-
-	sourceMac.erase(sourceMac.length() - 1, 1); // trim end
-
-	// get dest mac adress:
-	for (size_t i = 0; i < 6; i++)
-	{
-		destMac = destMac + std::to_string(recvData[i]) + ":";
-	}
-	destMac.erase(destMac.length() - 1, 1); // trim end
 
 	if (debug) {
-		printMsg("source MAC address is: " + sourceMac);
-		printMsg("dest MAC address is: " + destMac);
-	}
+		char ps[20];
+		string target;
 
-	// get user mac ()
-	userMac = nic->myMACAddr;
-	if (debug) {
-		printMsg("user MAC address is: " + userMac);
+		// user
+		sprintf(ps, "%.2x:%.2x:%.2x:%.2x:%.2x:%.2x", ((unsigned char*)(&userMac))[0], ((unsigned char*)(&userMac))[1], ((unsigned char*)(&userMac))[2], ((unsigned char*)(&userMac))[3], ((unsigned char*)(&userMac))[4], ((unsigned char*)(&userMac))[5]);
+		target = (std::string)ps;
+		printMsg("user MAC addr. is: " + target);
+
+		// dest
+		sprintf(ps, "%.2x:%.2x:%.2x:%.2x:%.2x:%.2x", ((unsigned char*)(&destMac))[0], ((unsigned char*)(&destMac))[1], ((unsigned char*)(&destMac))[2], ((unsigned char*)(&destMac))[3], ((unsigned char*)(&destMac))[4], ((unsigned char*)(&destMac))[5]);
+		target = (std::string)ps;
+		printMsg("destination MAC addr. is: " + target);
+
+		// source
+		sprintf(ps, "%.2x:%.2x:%.2x:%.2x:%.2x:%.2x", ((unsigned char*)(&sourceMac))[0], ((unsigned char*)(&sourceMac))[1], ((unsigned char*)(&sourceMac))[2], ((unsigned char*)(&sourceMac))[3], ((unsigned char*)(&sourceMac))[4], ((unsigned char*)(&sourceMac))[5]);
+		target = (std::string)ps;
+		printMsg("source MAC addr. is: " + target);
 	}
 
 	// check if it's not to the user
-	if (userMac.compare(destMac) != 0){
+	if (userMac != destMac){
 		if (debug){
 			printMsg("msg not to user. not continued.");
 		}
@@ -111,7 +113,7 @@ int L2::recvFromL2(byte *recvData, size_t recvDataLen)
 	}
 
 	// check if it's from the user:
-	if (userMac.compare(sourceMac) == 0){
+	if (userMac == sourceMac){
 		if (debug){
 			printMsg("msg originated by user. not continued.");
 		}
@@ -124,7 +126,7 @@ int L2::recvFromL2(byte *recvData, size_t recvDataLen)
 	type = type + recvData[13]; // lower
 
 	if (debug){
-		printMsg("type is: " + printf("%x", type));
+		printMsg( "type is: " + printf("%x", type) );
 	}
 
 	// extract data from msg

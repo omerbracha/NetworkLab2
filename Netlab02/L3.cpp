@@ -152,8 +152,7 @@ int L3::sendToL3(byte *sendData, size_t sendDataLen, std::string srcIP, std::str
 	newMessage[10] = sum & 0xFF;
 
 	// send newMessage to 2nd layer:
-	int check = lowerInterface->sendToL2(newMessage, newSize, debug);
-
+	int check = lowerInterface->sendToL2(newMessage, newSize, AF_INET, "", 0);
 	return check;
 }
 
@@ -171,7 +170,7 @@ int L3::recvFromL3(byte *recvData, size_t recvDataLen){
 	byte* newMessage = new byte[newSize];
 
 	// recive from L2:
-	
+
 	//int check = lowerInterface->recvFromL2(newMessage, newSize, debug
 	int check = 0;
 
