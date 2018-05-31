@@ -9,11 +9,6 @@
 #include <winsock2.h>
 using namespace std;
 
-#define PRINT_LOCK pthread_mutex_lock(&NIC::print_mutex)
-#define PRINT_UNLOCK pthread_mutex_unlock(&NIC::print_mutex)
-#define CACHE_LOCK pthread_mutex_lock(&lock_cache)
-#define CACHE_UNLOCK pthread_mutex_unlock(&lock_cache)
-
 struct dataToSend_t
 {
 	size_t length;

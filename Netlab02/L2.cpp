@@ -37,7 +37,7 @@ NIC* L2::getNIC(){ return nic; }
 std::string L2::getLowestInterface(){ return nic->getLowestInterface(); }
 
 /*
-* a generic print function, imlemented for better readabiltty
+* a generic print function, imlemented for better readability
 */
 void L2::printMsg(string msg)
 {
@@ -193,7 +193,6 @@ void L2::print_header(std::string &print_msg, uint64_t &destmac, uint64_t &srcma
 			print_msg += ":";
 		}
 	}
-	print_msg += "\n";
 	printMsg(print_msg);
 }
 
